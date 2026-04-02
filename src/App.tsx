@@ -5,6 +5,8 @@ import { getStoredAuthRecord } from './lib/localAuth'
 type WindowState = {
   id: string
   title: string
+  type?: 'app' | 'folder'
+  contents?: string[]
   x: number
   y: number
   width: number
@@ -46,10 +48,37 @@ const INITIAL_WINDOWS: WindowState[] = [
   {
     id: 'clock',
     title: 'Clock',
+    type: 'app',
     x: 320,
     y: 120,
     width: 420,
     height: 560,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'folder-games',
+    title: 'Games',
+    type: 'folder',
+    contents: [],
+    x: 88,
+    y: 246,
+    width: 430,
+    height: 350,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'folder-apps',
+    title: 'Apps',
+    type: 'folder',
+    contents: ['clock'],
+    x: 200,
+    y: 210,
+    width: 430,
+    height: 350,
     isFullscreen: false,
     minimized: false,
     isOpen: false,
@@ -225,16 +254,32 @@ function App() {
       <main className="wd-desktop" aria-label="WDWebOS desktop workspace">
         <section className="wd-icons" aria-label="Desktop shortcuts">
           <button className="wd-icon" onClick={() => launchWindow('welcome')}>
-            <span>System</span>
+            <span className="wd-icon-mark" aria-hidden="true">
+              WD
+            </span>
+            <span className="wd-icon-kicker">System</span>
             <strong>Welcome</strong>
           </button>
           <button className="wd-icon" onClick={() => launchWindow('roadmap')}>
-            <span>System</span>
+            <span className="wd-icon-mark" aria-hidden="true">
+              RM
+            </span>
+            <span className="wd-icon-kicker">System</span>
             <strong>Roadmap</strong>
           </button>
-          <button className="wd-icon" onClick={() => launchWindow('clock')}>
-            <span>School</span>
-            <strong>Clock</strong>
+          <button className="wd-icon" onClick={() => launchWindow('folder-games')}>
+            <span className="wd-icon-mark" aria-hidden="true">
+              GM
+            </span>
+            <span className="wd-icon-kicker">Folder</span>
+            <strong>Games</strong>
+          </button>
+          <button className="wd-icon" onClick={() => launchWindow('folder-apps')}>
+            <span className="wd-icon-mark" aria-hidden="true">
+              AP
+            </span>
+            <span className="wd-icon-kicker">Folder</span>
+            <strong>Apps</strong>
           </button>
         </section>
 
@@ -259,6 +304,7 @@ function App() {
                 width: '100%',
                 height: '100%',
                 zIndex: isActive ? 260 : 200,
+                animationDelay: `${index * 32}ms`,
               }
             : {
                 left: `${windowItem.x}px`,
@@ -266,6 +312,7 @@ function App() {
                 width: `${windowItem.width}px`,
                 height: `${windowItem.height}px`,
                 zIndex: isActive ? 200 : 100 + index,
+                animationDelay: `${index * 32}ms`,
               }
 
           return (
@@ -289,6 +336,7 @@ function App() {
                 <h2>{windowItem.title}</h2>
                 <div className="wd-window-actions">
                   <button
+                    className="wd-window-action"
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -300,9 +348,25 @@ function App() {
                         : `Fullscreen ${windowItem.title}`
                     }
                   >
-                    {windowItem.isFullscreen ? '[]-' : '[]'}
+                    <span className="wd-window-action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        {windowItem.isFullscreen ? (
+                          <>
+                            <path d="M3 5.25A2.25 2.25 0 0 1 5.25 3h4.5A2.25 2.25 0 0 1 12 5.25v4.5A2.25 2.25 0 0 1 9.75 12h-4.5A2.25 2.25 0 0 1 3 9.75z" />
+                            <path d="M5.5 5.5h4v4h-4z" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M2.75 3h6.5A1.75 1.75 0 0 1 11 4.75v6.5A1.75 1.75 0 0 1 9.25 13h-6.5A1.75 1.75 0 0 1 1 11.25v-6.5A1.75 1.75 0 0 1 2.75 3z" />
+                            <path d="M3.5 5.5h5v5h-5z" />
+                            <path d="M10.5 2.5h2.75v2.75h-1.25v-1.5h-1.5z" />
+                          </>
+                        )}
+                      </svg>
+                    </span>
                   </button>
                   <button
+                    className="wd-window-action"
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -310,9 +374,14 @@ function App() {
                     }}
                     aria-label={`Minimize ${windowItem.title}`}
                   >
-                    _
+                    <span className="wd-window-action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        <path d="M3 8.75h10v1.5H3z" />
+                      </svg>
+                    </span>
                   </button>
                   <button
+                    className="wd-window-action close"
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation()
@@ -320,7 +389,11 @@ function App() {
                     }}
                     aria-label={`Close ${windowItem.title}`}
                   >
-                    X
+                    <span className="wd-window-action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 16 16" focusable="false">
+                        <path d="M4.22 3.16 8 6.94l3.78-3.78 1.06 1.06L9.06 8l3.78 3.78-1.06 1.06L8 9.06l-3.78 3.78-1.06-1.06L6.94 8 3.16 4.22z" />
+                      </svg>
+                    </span>
                   </button>
                 </div>
               </div>
@@ -353,6 +426,36 @@ function App() {
                   </>
                 )}
 
+                {windowItem.type === 'folder' && (
+                  <section className="wd-folder-view" aria-label={`${windowItem.title} folder contents`}>
+                    <p>
+                      {windowItem.contents?.length
+                        ? `${windowItem.contents.length} item${windowItem.contents.length === 1 ? '' : 's'}`
+                        : 'This folder is empty.'}
+                    </p>
+                    {windowItem.contents && windowItem.contents.length > 0 && (
+                      <div className="wd-folder-grid">
+                        {windowItem.contents
+                          .map((entryId) => windows.find((windowEntry) => windowEntry.id === entryId))
+                          .filter((windowEntry): windowEntry is WindowState => Boolean(windowEntry))
+                          .map((windowEntry) => (
+                            <button
+                              key={`${windowItem.id}-${windowEntry.id}`}
+                              className="wd-folder-item"
+                              onClick={() => launchWindow(windowEntry.id)}
+                              aria-label={`Open ${windowEntry.title}`}
+                            >
+                              <span className="wd-folder-item-mark" aria-hidden="true">
+                                {windowEntry.title.slice(0, 2).toUpperCase()}
+                              </span>
+                              <strong>{windowEntry.title}</strong>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+
                 {windowItem.id === 'clock' && <ClockWindow lunchPeriod={profile?.lunchPeriod} />}
               </div>
             </article>
@@ -374,9 +477,19 @@ function App() {
             <h3>System Settings</h3>
             <div className="wd-setting-row">
               <span>Theme</span>
-              <div>
-                <button onClick={() => setTheme('heritage')}>Heritage</button>
-                <button onClick={() => setTheme('night')}>Night</button>
+              <div className="wd-theme-toggle">
+                <button
+                  className={theme === 'heritage' ? 'is-active' : ''}
+                  onClick={() => setTheme('heritage')}
+                >
+                  Heritage
+                </button>
+                <button
+                  className={theme === 'night' ? 'is-active' : ''}
+                  onClick={() => setTheme('night')}
+                >
+                  Night
+                </button>
               </div>
             </div>
             <div className="wd-setting-row">
