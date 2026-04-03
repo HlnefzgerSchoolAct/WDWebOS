@@ -1,5 +1,20 @@
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import ClockWindow from './components/ClockWindow'
+import BackcountryWindow from './components/BackcountryWindow'
+import BasketballLegendsWindow from './components/BasketballLegendsWindow'
+import BasketballStarsWindow from './components/BasketballStarsWindow'
+import BasketRandomWindow from './components/BasketRandomWindow'
+import BoxingRandomWindow from './components/BoxingRandomWindow'
+import Deathrun3DWindow from './components/Deathrun3DWindow'
+import GeometryDashWindow from './components/GeometryDashWindow'
+import MinecraftWindow from './components/MinecraftWindow.tsx'
+import DuckLife1Window from './components/DuckLife1Window'
+import DuckLife2Window from './components/DuckLife2Window'
+import DuckLife3Window from './components/DuckLife3Window'
+import DuckLife4Window from './components/DuckLife4Window'
+import DuckLife5Window from './components/DuckLife5Window'
+import BTD4Window from './components/BTD4Window'
+import RetroBowlWindow from './components/RetroBowlWindow'
 import { getStoredAuthRecord } from './lib/localAuth'
 
 type WindowState = {
@@ -58,10 +73,206 @@ const INITIAL_WINDOWS: WindowState[] = [
     isOpen: false,
   },
   {
+    id: 'minecraft',
+    title: 'Minecraft',
+    type: 'app',
+    x: 152,
+    y: 188,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'ducklife1',
+    title: 'Duck Life 1',
+    type: 'app',
+    x: 160,
+    y: 194,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'ducklife2',
+    title: 'Duck Life 2',
+    type: 'app',
+    x: 168,
+    y: 200,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'ducklife3',
+    title: 'Duck Life 3',
+    type: 'app',
+    x: 176,
+    y: 206,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'ducklife4',
+    title: 'Duck Life 4',
+    type: 'app',
+    x: 184,
+    y: 212,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'ducklife5',
+    title: 'Duck Life 5',
+    type: 'app',
+    x: 192,
+    y: 218,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'btd4',
+    title: 'Bloons TD 4',
+    type: 'app',
+    x: 200,
+    y: 224,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'backcountry',
+    title: 'Backcountry',
+    type: 'app',
+    x: 208,
+    y: 230,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'basketballlegends',
+    title: 'Basketball Legends',
+    type: 'app',
+    x: 216,
+    y: 236,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'basketballstars',
+    title: 'Basketball Stars',
+    type: 'app',
+    x: 224,
+    y: 242,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'basketrandom',
+    title: 'Basket Random',
+    type: 'app',
+    x: 232,
+    y: 248,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'boxingrandom',
+    title: 'Boxing Random',
+    type: 'app',
+    x: 240,
+    y: 254,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'deathrun3d',
+    title: 'Death Run 3D',
+    type: 'app',
+    x: 248,
+    y: 260,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'geometrydash',
+    title: 'Geometry Dash',
+    type: 'app',
+    x: 256,
+    y: 266,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
+    id: 'retrobowl',
+    title: 'Retro Bowl',
+    type: 'app',
+    x: 264,
+    y: 272,
+    width: 920,
+    height: 620,
+    isFullscreen: false,
+    minimized: false,
+    isOpen: false,
+  },
+  {
     id: 'folder-games',
     title: 'Games',
     type: 'folder',
-    contents: [],
+    contents: [
+      'backcountry',
+      'basketballlegends',
+      'basketballstars',
+      'basketrandom',
+      'btd4',
+      'boxingrandom',
+      'deathrun3d',
+      'ducklife1',
+      'ducklife2',
+      'ducklife3',
+      'ducklife4',
+      'ducklife5',
+      'geometrydash',
+      'minecraft',
+      'retrobowl',
+    ],
     x: 88,
     y: 246,
     width: 430,
@@ -274,6 +485,13 @@ function App() {
             <span className="wd-icon-kicker">Folder</span>
             <strong>Games</strong>
           </button>
+          <button className="wd-icon" onClick={() => launchWindow('minecraft')}>
+            <span className="wd-icon-mark" aria-hidden="true">
+              MC
+            </span>
+            <span className="wd-icon-kicker">Game</span>
+            <strong>Minecraft</strong>
+          </button>
           <button className="wd-icon" onClick={() => launchWindow('folder-apps')}>
             <span className="wd-icon-mark" aria-hidden="true">
               AP
@@ -398,7 +616,9 @@ function App() {
                 </div>
               </div>
 
-              <div className="wd-window-content">
+              <div
+                className={`wd-window-content ${windowItem.id === 'minecraft' ? 'minecraft' : ''}`}
+              >
                 {windowItem.id === 'welcome' && (
                   <>
                     <p>
@@ -457,6 +677,22 @@ function App() {
                 )}
 
                 {windowItem.id === 'clock' && <ClockWindow lunchPeriod={profile?.lunchPeriod} />}
+
+                {windowItem.id === 'minecraft' && <MinecraftWindow />}
+                {windowItem.id === 'ducklife1' && <DuckLife1Window />}
+                {windowItem.id === 'ducklife2' && <DuckLife2Window />}
+                {windowItem.id === 'ducklife3' && <DuckLife3Window />}
+                {windowItem.id === 'ducklife4' && <DuckLife4Window />}
+                {windowItem.id === 'ducklife5' && <DuckLife5Window />}
+                {windowItem.id === 'btd4' && <BTD4Window />}
+                {windowItem.id === 'backcountry' && <BackcountryWindow />}
+                {windowItem.id === 'basketballlegends' && <BasketballLegendsWindow />}
+                {windowItem.id === 'basketballstars' && <BasketballStarsWindow />}
+                {windowItem.id === 'basketrandom' && <BasketRandomWindow />}
+                {windowItem.id === 'boxingrandom' && <BoxingRandomWindow />}
+                {windowItem.id === 'deathrun3d' && <Deathrun3DWindow />}
+                {windowItem.id === 'geometrydash' && <GeometryDashWindow />}
+                {windowItem.id === 'retrobowl' && <RetroBowlWindow />}
               </div>
             </article>
           )
@@ -468,6 +704,21 @@ function App() {
             <button onClick={() => launchWindow('welcome')}>Open Welcome</button>
             <button onClick={() => launchWindow('roadmap')}>Open Roadmap</button>
             <button onClick={() => launchWindow('clock')}>Open Clock</button>
+            <button onClick={() => launchWindow('backcountry')}>Open Backcountry</button>
+            <button onClick={() => launchWindow('basketballlegends')}>Open Basketball Legends</button>
+            <button onClick={() => launchWindow('basketballstars')}>Open Basketball Stars</button>
+            <button onClick={() => launchWindow('basketrandom')}>Open Basket Random</button>
+            <button onClick={() => launchWindow('btd4')}>Open Bloons TD 4</button>
+            <button onClick={() => launchWindow('boxingrandom')}>Open Boxing Random</button>
+            <button onClick={() => launchWindow('deathrun3d')}>Open Death Run 3D</button>
+            <button onClick={() => launchWindow('ducklife1')}>Open Duck Life 1</button>
+            <button onClick={() => launchWindow('ducklife2')}>Open Duck Life 2</button>
+            <button onClick={() => launchWindow('ducklife3')}>Open Duck Life 3</button>
+            <button onClick={() => launchWindow('ducklife4')}>Open Duck Life 4</button>
+            <button onClick={() => launchWindow('ducklife5')}>Open Duck Life 5</button>
+            <button onClick={() => launchWindow('geometrydash')}>Open Geometry Dash</button>
+            <button onClick={() => launchWindow('minecraft')}>Open Minecraft</button>
+            <button onClick={() => launchWindow('retrobowl')}>Open Retro Bowl</button>
             <button onClick={() => setIsSettingsOpen(true)}>Open Settings</button>
           </section>
         )}

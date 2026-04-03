@@ -227,6 +227,10 @@ body {
   padding: 1.18rem 1.3rem;
 }
 
+.wd-window.fullscreen .wd-window-content.minecraft {
+  padding: 0;
+}
+
 .wd-window-bar {
   display: flex;
   align-items: center;
@@ -342,6 +346,11 @@ body {
   color: var(--text-secondary);
 }
 
+.wd-window-content.minecraft {
+  padding: 0;
+  overflow: hidden;
+}
+
 .wd-window-content p {
   margin: 0;
   line-height: 1.5;
@@ -363,6 +372,19 @@ body {
 
 .wd-window-content li {
   line-height: 1.4;
+}
+
+.wd-minecraft-window {
+  width: 100%;
+  height: 100%;
+}
+
+.wd-minecraft-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
 }
 
 .wd-folder-view {
