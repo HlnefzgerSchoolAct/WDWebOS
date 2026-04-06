@@ -8,6 +8,8 @@ import {
 import { getConfiguredMasterKey } from '../lib/masterKey'
 import {
   createAssertionOptions,
+  createRegistrationOptions,
+  extractCredentialRecord,
   isWebAuthnSupported,
   verifyAssertionResponse,
 } from '../lib/webauthn'
@@ -18,6 +20,11 @@ type StartupGateProps = {
 
 const GRADE_OPTIONS: StudentProfile['grade'][] = ['9', '10', '11', '12']
 const LUNCH_OPTIONS: StudentProfile['lunchPeriod'][] = ['A lunch', 'B lunch', 'C lunch']
+
+type EnvVarRow = {
+  key: string
+  value: string
+}
 
 function StartupGate({ children }: StartupGateProps) {
   const initialState = useMemo(() => getStoredAuthState(), [])
@@ -30,6 +37,16 @@ function StartupGate({ children }: StartupGateProps) {
   const [lunchPeriod, setLunchPeriod] = useState<StudentProfile['lunchPeriod']>('A lunch')
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [setupRows, setSetupRows] = useState<EnvVarRow[]>([])
+  const [setupOutput, setSetupOutput] = useState<string>('')
+  const [copyStatus, setCopyStatus] = useState<string>('')
+
+  const envTemplate = [
+    'VITE_MASTER_KEY_CREDENTIAL_ID=',
+    'VITE_MASTER_KEY_PUBLIC_KEY_JWK=',
+    'VITE_MASTER_KEY_ALGORITHM=-7',
+    'VITE_MASTER_KEY_SIGN_COUNT=0',
+  ].join('\n')
 
   const activeAccount = authState?.accounts.find((account) => account.id === authState.activeAccountId)
   const isOnboarding = !authState
@@ -58,7 +75,31 @@ function StartupGate({ children }: StartupGateProps) {
       }
 
       if (!masterKey) {
-        setError('Master key credentials are missing. Set VITE_MASTER_KEY_CREDENTIAL_ID and VITE_MASTER_KEY_PUBLIC_KEY_JWK.')
+        const registrationOptions = await createRegistrationOptions(profile)
+        const credential = (await navigator.credentials.create({
+          publicKey: registrationOptions,
+        })) as PublicKeyCredential | null
+
+        if (!credential) {
+          setError('Master key enrollment was canceled.')
+          return
+        }
+
+        const generatedMasterKey = await extractCredentialRecord(credential)
+        const nextRows: EnvVarRow[] = [
+          { key: 'VITE_MASTER_KEY_CREDENTIAL_ID', value: generatedMasterKey.credentialId },
+          {
+            key: 'VITE_MASTER_KEY_PUBLIC_KEY_JWK',
+            value: JSON.stringify(generatedMasterKey.publicKeyJwk),
+          },
+          { key: 'VITE_MASTER_KEY_ALGORITHM', value: String(generatedMasterKey.algorithm) },
+          { key: 'VITE_MASTER_KEY_SIGN_COUNT', value: String(generatedMasterKey.signCount) },
+        ]
+
+        setSetupRows(nextRows)
+        setSetupOutput(nextRows.map((row) => `${row.key}=${row.value}`).join('\n'))
+        setCopyStatus('')
+        setError('Master key generated. Copy these values into Vercel and redeploy.')
         return
       }
 
@@ -95,6 +136,28 @@ function StartupGate({ children }: StartupGateProps) {
       setError(cause instanceof Error ? cause.message : 'Master key enrollment failed.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCopyAll = async () => {
+    if (!setupOutput) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(setupOutput)
+      setCopyStatus('Copied all values.')
+    } catch {
+      setError('Could not copy automatically. Copy the values manually.')
+    }
+  }
+
+  const handleCopySingle = async (row: EnvVarRow) => {
+    try {
+      await navigator.clipboard.writeText(`${row.key}=${row.value}`)
+      setCopyStatus(`Copied ${row.key}.`)
+    } catch {
+      setError('Could not copy automatically. Copy the values manually.')
     }
   }
 
@@ -162,6 +225,15 @@ function StartupGate({ children }: StartupGateProps) {
     return <>{children}</>
   }
 
+  const handleCopyTemplate = async () => {
+    try {
+      await navigator.clipboard.writeText(envTemplate)
+      setCopyStatus('Copied template env values.')
+    } catch {
+      setError('Could not copy automatically. Copy the template manually.')
+    }
+  }
+
   return (
     <div className="wd-gate-shell">
       <section className="wd-gate-window" aria-label="WDWebOS sign in setup">
@@ -216,9 +288,47 @@ function StartupGate({ children }: StartupGateProps) {
             </select>
 
             <p className="wd-gate-note">
-              Only the configured master key can authorize WDWebOS. Set it in your local env file
-              with the public credential ID and public key JWK.
+              {masterKey
+                ? 'Only the configured master key can authorize WDWebOS. Enter your account details, then enroll.'
+                : 'No configured master key was found. Use this form once to generate env values, set them in Vercel, and redeploy.'}
             </p>
+
+            {!masterKey && setupOutput && (
+              <section className="wd-bootstrap-helper" aria-label="Master key setup output">
+                <h2>Set These In Vercel</h2>
+                <div className="wd-bootstrap-rows">
+                  {setupRows.map((row) => (
+                    <div key={row.key} className="wd-bootstrap-row">
+                      <label>{row.key}</label>
+                      <textarea
+                        value={row.value}
+                        readOnly
+                        rows={row.key === 'VITE_MASTER_KEY_PUBLIC_KEY_JWK' ? 4 : 1}
+                      />
+                      <button type="button" onClick={() => handleCopySingle(row)}>
+                        Copy {row.key}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <pre>{setupOutput}</pre>
+                <button type="button" onClick={handleCopyAll}>Copy All Values</button>
+                {copyStatus && <p className="wd-bootstrap-status">{copyStatus}</p>}
+              </section>
+            )}
+
+            {!masterKey && (
+              <section className="wd-bootstrap-helper" aria-label="Master key bootstrap helper">
+                <h3>Credential Bootstrap Helper</h3>
+                <p>
+                  Paste these into your environment variables (Vercel or local), then redeploy and
+                  refresh this page.
+                </p>
+                <pre>{envTemplate}</pre>
+                <button type="button" onClick={handleCopyTemplate}>Copy Env Template</button>
+                {copyStatus && <p className="wd-bootstrap-status">{copyStatus}</p>}
+              </section>
+            )}
 
             {error && <p className="wd-gate-error">{error}</p>}
 

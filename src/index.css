@@ -632,6 +632,72 @@ body {
   line-height: 1.45;
 }
 
+.wd-bootstrap-helper {
+  display: grid;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 181, 93, 0.35);
+  background: rgba(255, 138, 0, 0.12);
+  padding: 0.7rem;
+}
+
+.wd-bootstrap-helper h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.wd-bootstrap-helper p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.wd-bootstrap-helper pre {
+  margin: 0;
+  padding: 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border-low);
+  background: rgba(10, 13, 20, 0.72);
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.8rem;
+}
+
+.wd-bootstrap-rows {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.wd-bootstrap-row {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.wd-bootstrap-row label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
+}
+
+.wd-bootstrap-row textarea {
+  width: 100%;
+  resize: vertical;
+  margin: 0;
+  padding: 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border-low);
+  background: rgba(10, 13, 20, 0.72);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+}
+
+.wd-bootstrap-status {
+  color: #b7ffc6 !important;
+}
+
+
 .wd-clock {
   display: grid;
   gap: 0.92rem;
