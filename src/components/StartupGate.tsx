@@ -39,7 +39,7 @@ function formatWebAuthnError(cause: unknown, rpId: string): string {
       message.includes('credential') ||
       message.includes('rp id mismatch')
     ) {
-      return `This key is not registered for RP ID \"${rpId}\". If you enrolled on a different domain, set VITE_MASTER_KEY_RP_ID to that domain (or re-enroll on the current domain).`
+      return `This key is not registered for RP ID \"${rpId}\". Set VITE_MASTER_KEY_RP_ID to a hostname only (for example wd-web-os.vercel.app, not https://wd-web-os.vercel.app/) or re-enroll on the current domain.`
     }
 
     return cause.message

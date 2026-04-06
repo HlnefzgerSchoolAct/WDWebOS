@@ -13,6 +13,24 @@ function normalizeEnvValue(value: string): string {
   return trimmed
 }
 
+function normalizeRpIdValue(value: string): string {
+  const normalized = normalizeEnvValue(value)
+
+  if (!normalized) {
+    return ''
+  }
+
+  try {
+    const parsed = new URL(normalized)
+    return parsed.hostname.trim().toLowerCase().replace(/\.+$/, '')
+  } catch {
+    const withoutProtocol = normalized.replace(/^https?:\/\//i, '')
+    const hostSegment = withoutProtocol.split('/')[0] ?? ''
+    const hostname = hostSegment.split(':')[0] ?? hostSegment
+    return hostname.trim().toLowerCase().replace(/\.+$/, '')
+  }
+}
+
 function parseJsonWebKey(rawValue: string): JsonWebKey | null {
   try {
     const parsed = JSON.parse(normalizeEnvValue(rawValue)) as JsonWebKey
@@ -39,7 +57,7 @@ export function getConfiguredMasterKey(): ConfiguredMasterKey | null {
   const rawRpId = import.meta.env.VITE_MASTER_KEY_RP_ID as string | undefined
 
   const credentialId = rawCredentialId ? normalizeEnvValue(rawCredentialId) : ''
-  const rpId = rawRpId ? normalizeEnvValue(rawRpId).toLowerCase() : undefined
+  const rpId = rawRpId ? normalizeRpIdValue(rawRpId) : undefined
 
   if (!credentialId || !rawPublicKey) {
     return null
@@ -63,6 +81,6 @@ export function getConfiguredMasterKey(): ConfiguredMasterKey | null {
     publicKeyJwk,
     algorithm,
     signCount,
-    rpId,
+    rpId: rpId || undefined,
   }
 }

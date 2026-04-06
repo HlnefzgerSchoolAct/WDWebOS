@@ -66,7 +66,20 @@ function asArrayBufferView(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
 }
 
 function normalizeRpId(rpId: string): string {
-  return rpId.trim().toLowerCase().replace(/\.+$/, '')
+  const normalized = rpId.trim()
+
+  if (!normalized) {
+    return ''
+  }
+
+  try {
+    return new URL(normalized).hostname.trim().toLowerCase().replace(/\.+$/, '')
+  } catch {
+    const withoutProtocol = normalized.replace(/^https?:\/\//i, '')
+    const hostSegment = withoutProtocol.split('/')[0] ?? ''
+    const hostname = hostSegment.split(':')[0] ?? hostSegment
+    return hostname.trim().toLowerCase().replace(/\.+$/, '')
+  }
 }
 
 function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
