@@ -296,6 +296,24 @@ const INITIAL_WINDOWS: WindowState[] = [
   },
 ]
 
+const GAME_WINDOW_IDS = new Set([
+  'minecraft',
+  'ducklife1',
+  'ducklife2',
+  'ducklife3',
+  'ducklife4',
+  'ducklife5',
+  'btd4',
+  'backcountry',
+  'basketballlegends',
+  'basketballstars',
+  'basketrandom',
+  'boxingrandom',
+  'deathrun3d',
+  'geometrydash',
+  'retrobowl',
+])
+
 function App() {
   const [windows, setWindows] = useState<WindowState[]>(INITIAL_WINDOWS)
   const [activeWindowId, setActiveWindowId] = useState<string>('roadmap')
@@ -522,7 +540,6 @@ function App() {
                 width: '100%',
                 height: '100%',
                 zIndex: isActive ? 260 : 200,
-                animationDelay: `${index * 32}ms`,
               }
             : {
                 left: `${windowItem.x}px`,
@@ -530,7 +547,6 @@ function App() {
                 width: `${windowItem.width}px`,
                 height: `${windowItem.height}px`,
                 zIndex: isActive ? 200 : 100 + index,
-                animationDelay: `${index * 32}ms`,
               }
 
           return (
@@ -617,7 +633,7 @@ function App() {
               </div>
 
               <div
-                className={`wd-window-content ${windowItem.id === 'minecraft' ? 'minecraft' : ''}`}
+                className={`wd-window-content ${GAME_WINDOW_IDS.has(windowItem.id) ? 'game' : ''}`}
               >
                 {windowItem.id === 'welcome' && (
                   <>

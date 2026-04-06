@@ -2,9 +2,16 @@ import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
 import {
   type StudentProfile,
   getStoredAuthRecord,
-  hashPassword,
   saveAuthRecord,
 } from '../lib/localAuth'
+import {
+  buildAuthenticatedRecord,
+  createAssertionOptions,
+  createRegistrationOptions,
+  extractCredentialRecord,
+  isWebAuthnSupported,
+  verifyAssertionResponse,
+} from '../lib/webauthn'
 
 type StartupGateProps = {
   children: ReactNode
@@ -18,21 +25,18 @@ function StartupGate({ children }: StartupGateProps) {
   const [storedProfile, setStoredProfile] = useState<StudentProfile | null>(
     initialRecord?.profile ?? null,
   )
-  const [storedPasswordHash, setStoredPasswordHash] = useState<string | null>(
-    initialRecord?.passwordHash ?? null,
+  const [storedCredentialId, setStoredCredentialId] = useState<string | null>(
+    initialRecord?.credential?.credentialId ?? null,
   )
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(false)
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(Boolean(initialRecord?.trustedDevice))
 
   const [name, setName] = useState<string>('')
   const [grade, setGrade] = useState<StudentProfile['grade']>('9')
   const [lunchPeriod, setLunchPeriod] = useState<StudentProfile['lunchPeriod']>('A lunch')
-  const [createPassword, setCreatePassword] = useState<string>('')
-  const [confirmPassword, setConfirmPassword] = useState<string>('')
-  const [unlockPassword, setUnlockPassword] = useState<string>('')
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  const isOnboarding = !storedProfile || !storedPasswordHash
+  const isOnboarding = !storedProfile || !storedCredentialId
 
   const handleOnboardingSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -43,36 +47,44 @@ function StartupGate({ children }: StartupGateProps) {
       return
     }
 
-    if (createPassword.length < 4) {
-      setError('Password must be at least 4 characters.')
-      return
-    }
-
-    if (createPassword !== confirmPassword) {
-      setError('Passwords do not match.')
+    if (!isWebAuthnSupported()) {
+      setError('This browser does not support WebAuthn.')
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      const passwordHash = await hashPassword(createPassword)
       const profile: StudentProfile = {
         name: name.trim(),
         grade,
         lunchPeriod,
       }
 
-      saveAuthRecord({
-        profile,
-        passwordHash,
-      })
+      const credentialOptions = await createRegistrationOptions(profile)
+      const credential = (await navigator.credentials.create({
+        publicKey: credentialOptions,
+      })) as PublicKeyCredential | null
+
+      if (!credential) {
+        setError('YubiKey enrollment was canceled.')
+        return
+      }
+
+      const credentialRecord = await extractCredentialRecord(credential)
+      saveAuthRecord(
+        buildAuthenticatedRecord({
+          profile,
+          credential: credentialRecord,
+        }),
+      )
 
       setStoredProfile(profile)
-      setStoredPasswordHash(passwordHash)
-      setCreatePassword('')
-      setConfirmPassword('')
+      setStoredCredentialId(credentialRecord.credentialId)
+      setIsUnlocked(true)
       setError('')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'YubiKey enrollment failed.')
     } finally {
       setIsSubmitting(false)
     }
@@ -82,25 +94,62 @@ function StartupGate({ children }: StartupGateProps) {
     event.preventDefault()
     setError('')
 
-    if (!storedPasswordHash) {
-      setError('Password setup is missing. Please complete onboarding again.')
+    if (!storedProfile || !storedCredentialId) {
+      setError('Device enrollment is missing. Please complete setup again.')
       setStoredProfile(null)
+      return
+    }
+
+    if (!isWebAuthnSupported()) {
+      setError('This browser does not support WebAuthn.')
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      const enteredHash = await hashPassword(unlockPassword)
+      const record = getStoredAuthRecord()
 
-      if (enteredHash !== storedPasswordHash) {
-        setError('Incorrect password. Try again.')
-        setUnlockPassword('')
+      if (!record) {
+        setError('Enrollment data is missing. Please set up the device again.')
         return
       }
 
+      const assertionOptions = await createAssertionOptions(record.credential.credentialId)
+      const assertion = (await navigator.credentials.get({
+        publicKey: assertionOptions,
+      })) as PublicKeyCredential | null
+
+      if (!assertion) {
+        setError('YubiKey verification was canceled.')
+        return
+      }
+
+      const verification = await verifyAssertionResponse(
+        record.credential,
+        assertion,
+        assertionOptions.challenge as Uint8Array,
+      )
+
+      if (!verification.verified) {
+        setError('YubiKey verification failed.')
+        return
+      }
+
+      saveAuthRecord({
+        ...record,
+        credential: {
+          ...record.credential,
+          signCount: verification.signCount,
+        },
+        trustedDevice: true,
+        updatedAt: new Date().toISOString(),
+      })
+
       setIsUnlocked(true)
-      setUnlockPassword('')
+      setStoredCredentialId(record.credential.credentialId)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'YubiKey verification failed.')
     } finally {
       setIsSubmitting(false)
     }
@@ -117,8 +166,8 @@ function StartupGate({ children }: StartupGateProps) {
           <h1>WDWebOS Startup</h1>
           <p>
             {isOnboarding
-              ? 'Set up your profile and password for this device.'
-              : 'Enter your password to continue.'}
+              ? 'Set up your profile and enroll the 5C NFC YubiKey for this device.'
+              : 'Use your enrolled YubiKey to continue.'}
           </p>
         </header>
 
@@ -163,30 +212,12 @@ function StartupGate({ children }: StartupGateProps) {
               ))}
             </select>
 
-            <label htmlFor="onboarding-password">Create password</label>
-            <input
-              id="onboarding-password"
-              type="password"
-              value={createPassword}
-              onChange={(event) => setCreatePassword(event.target.value)}
-              autoComplete="new-password"
-              disabled={isSubmitting}
-            />
-
-            <label htmlFor="onboarding-confirm-password">Confirm password</label>
-            <input
-              id="onboarding-confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              autoComplete="new-password"
-              disabled={isSubmitting}
-            />
+            <p className="wd-gate-note">This device stays trusted after the YubiKey is enrolled.</p>
 
             {error && <p className="wd-gate-error">{error}</p>}
 
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Finish setup'}
+              {isSubmitting ? 'Waiting for YubiKey...' : 'Enroll YubiKey'}
             </button>
           </form>
         ) : (
@@ -197,20 +228,15 @@ function StartupGate({ children }: StartupGateProps) {
               {storedProfile?.lunchPeriod})
             </p>
 
-            <label htmlFor="unlock-password">Password</label>
-            <input
-              id="unlock-password"
-              type="password"
-              value={unlockPassword}
-              onChange={(event) => setUnlockPassword(event.target.value)}
-              autoComplete="current-password"
-              disabled={isSubmitting}
-            />
+            <p className="wd-gate-note">
+              YubiKey is already enrolled on this browser. Unlocking will confirm the key and
+              keep this device trusted.
+            </p>
 
             {error && <p className="wd-gate-error">{error}</p>}
 
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Checking...' : 'Unlock WDWebOS'}
+              {isSubmitting ? 'Checking YubiKey...' : 'Unlock WDWebOS'}
             </button>
           </form>
         )}

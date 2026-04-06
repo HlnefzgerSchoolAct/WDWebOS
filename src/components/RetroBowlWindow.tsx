@@ -1,15 +1,7 @@
+import GameWindow from './GameWindow'
+
 function RetroBowlWindow() {
-  return (
-    <section className="wd-minecraft-window" aria-label="Retro Bowl game">
-      <iframe
-        className="wd-minecraft-frame"
-        src="/games/retrobowl/index.html"
-        title="Retro Bowl"
-        allow="fullscreen; gamepad; autoplay; clipboard-read; clipboard-write"
-        allowFullScreen
-      />
-    </section>
-  )
+  return <GameWindow title="Retro Bowl" src="/games/retrobowl/index.html" />
 }
 
 export default RetroBowlWindow

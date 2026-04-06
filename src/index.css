@@ -346,7 +346,8 @@ body {
   color: var(--text-secondary);
 }
 
-.wd-window-content.minecraft {
+.wd-window-content.minecraft,
+.wd-window-content.game {
   padding: 0;
   overflow: hidden;
 }
@@ -374,12 +375,14 @@ body {
   line-height: 1.4;
 }
 
-.wd-minecraft-window {
+.wd-minecraft-window,
+.wd-game-window {
   width: 100%;
   height: 100%;
 }
 
-.wd-minecraft-frame {
+.wd-minecraft-frame,
+.wd-game-frame {
   display: block;
   width: 100%;
   height: 100%;

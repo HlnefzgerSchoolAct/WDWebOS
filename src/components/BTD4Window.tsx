@@ -1,15 +1,7 @@
+import GameWindow from './GameWindow'
+
 function BTD4Window() {
-  return (
-    <section className="wd-minecraft-window" aria-label="Bloons Tower Defense 4 game">
-      <iframe
-        className="wd-minecraft-frame"
-        src="/games/btd4/index.html"
-        title="Bloons TD 4"
-        allow="fullscreen; gamepad; autoplay; clipboard-read; clipboard-write"
-        allowFullScreen
-      />
-    </section>
-  )
+  return <GameWindow title="Bloons TD 4" src="/games/btd4/index.html" />
 }
 
 export default BTD4Window
