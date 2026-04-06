@@ -15,6 +15,7 @@ Base implementation has started with the foundation shell and system layout:
 - Settings panel with theme switching
 - Responsive desktop-first layout
 - Clock app with school schedule, live time, and countdown display
+- Master security key auth flow started for device and account authorization
 
 ## Scope
 
@@ -27,6 +28,7 @@ In scope:
 - Launcher and taskbar
 - Settings core and theming
 - Auth/session-ready architecture
+- Master security key authority for device and student account enrollment
 - Accessibility and legal baseline
 - Clock and schedule-driven school day logic
 
@@ -47,6 +49,27 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Authentication Model
+
+WDWebOS uses one master 5C NFC security key as the enrollment authority for all devices and
+student accounts. That key is required to authorize first-time setup, add or restore accounts,
+and reapprove a device session.
+
+WebAuthn requires `localhost` or HTTPS in a modern browser. Clearing site data removes the local
+session cache, but the master key remains the source of truth for enrollment.
+
+Put the approved key credential in a local `.env.local` file at the repository root:
+
+```bash
+VITE_MASTER_KEY_CREDENTIAL_ID=your-credential-id
+VITE_MASTER_KEY_PUBLIC_KEY_JWK={"kty":"EC","crv":"P-256","x":"...","y":"...","ext":true}
+VITE_MASTER_KEY_ALGORITHM=-7
+VITE_MASTER_KEY_SIGN_COUNT=0
+```
+
+Only that credential ID and public key will be accepted. If a different security key is inserted,
+WDWebOS will reject it.
 
 ## Next Foundation Milestones
 

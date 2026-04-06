@@ -1,14 +1,13 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
 import {
   type StudentProfile,
-  getStoredAuthRecord,
-  saveAuthRecord,
+  createInitialAuthState,
+  getStoredAuthState,
+  saveAuthState,
 } from '../lib/localAuth'
+import { getConfiguredMasterKey } from '../lib/masterKey'
 import {
-  buildAuthenticatedRecord,
   createAssertionOptions,
-  createRegistrationOptions,
-  extractCredentialRecord,
   isWebAuthnSupported,
   verifyAssertionResponse,
 } from '../lib/webauthn'
@@ -21,14 +20,10 @@ const GRADE_OPTIONS: StudentProfile['grade'][] = ['9', '10', '11', '12']
 const LUNCH_OPTIONS: StudentProfile['lunchPeriod'][] = ['A lunch', 'B lunch', 'C lunch']
 
 function StartupGate({ children }: StartupGateProps) {
-  const initialRecord = useMemo(() => getStoredAuthRecord(), [])
-  const [storedProfile, setStoredProfile] = useState<StudentProfile | null>(
-    initialRecord?.profile ?? null,
-  )
-  const [storedCredentialId, setStoredCredentialId] = useState<string | null>(
-    initialRecord?.credential?.credentialId ?? null,
-  )
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(Boolean(initialRecord?.trustedDevice))
+  const initialState = useMemo(() => getStoredAuthState(), [])
+  const [authState, setAuthState] = useState(initialState)
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(Boolean(initialState?.trustedDevice))
+  const masterKey = useMemo(() => getConfiguredMasterKey(), [])
 
   const [name, setName] = useState<string>('')
   const [grade, setGrade] = useState<StudentProfile['grade']>('9')
@@ -36,7 +31,8 @@ function StartupGate({ children }: StartupGateProps) {
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  const isOnboarding = !storedProfile || !storedCredentialId
+  const activeAccount = authState?.accounts.find((account) => account.id === authState.activeAccountId)
+  const isOnboarding = !authState
 
   const handleOnboardingSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -61,30 +57,42 @@ function StartupGate({ children }: StartupGateProps) {
         lunchPeriod,
       }
 
-      const credentialOptions = await createRegistrationOptions(profile)
-      const credential = (await navigator.credentials.create({
-        publicKey: credentialOptions,
-      })) as PublicKeyCredential | null
-
-      if (!credential) {
-        setError('YubiKey enrollment was canceled.')
+      if (!masterKey) {
+        setError('Master key credentials are missing. Set VITE_MASTER_KEY_CREDENTIAL_ID and VITE_MASTER_KEY_PUBLIC_KEY_JWK.')
         return
       }
 
-      const credentialRecord = await extractCredentialRecord(credential)
-      saveAuthRecord(
-        buildAuthenticatedRecord({
-          profile,
-          credential: credentialRecord,
-        }),
+      const assertionOptions = await createAssertionOptions(masterKey.credentialId)
+      const assertion = (await navigator.credentials.get({
+        publicKey: assertionOptions,
+      })) as PublicKeyCredential | null
+
+      if (!assertion) {
+        setError('Master key verification was canceled.')
+        return
+      }
+
+      const nextState = createInitialAuthState({
+        profile,
+      })
+
+      const verification = await verifyAssertionResponse(
+        masterKey,
+        assertion,
+        assertionOptions.challenge as Uint8Array,
       )
 
-      setStoredProfile(profile)
-      setStoredCredentialId(credentialRecord.credentialId)
+      if (!verification.verified) {
+        setError('Master key verification failed.')
+        return
+      }
+
+      saveAuthState(nextState)
+      setAuthState(nextState)
       setIsUnlocked(true)
       setError('')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'YubiKey enrollment failed.')
+      setError(cause instanceof Error ? cause.message : 'Master key enrollment failed.')
     } finally {
       setIsSubmitting(false)
     }
@@ -94,9 +102,14 @@ function StartupGate({ children }: StartupGateProps) {
     event.preventDefault()
     setError('')
 
-    if (!storedProfile || !storedCredentialId) {
+    if (!masterKey) {
+      setError('Master key credentials are missing. Set VITE_MASTER_KEY_CREDENTIAL_ID and VITE_MASTER_KEY_PUBLIC_KEY_JWK.')
+      return
+    }
+
+    if (!authState) {
       setError('Device enrollment is missing. Please complete setup again.')
-      setStoredProfile(null)
+      setAuthState(null)
       return
     }
 
@@ -108,48 +121,38 @@ function StartupGate({ children }: StartupGateProps) {
     setIsSubmitting(true)
 
     try {
-      const record = getStoredAuthRecord()
-
-      if (!record) {
-        setError('Enrollment data is missing. Please set up the device again.')
-        return
-      }
-
-      const assertionOptions = await createAssertionOptions(record.credential.credentialId)
+      const assertionOptions = await createAssertionOptions(masterKey.credentialId)
       const assertion = (await navigator.credentials.get({
         publicKey: assertionOptions,
       })) as PublicKeyCredential | null
 
       if (!assertion) {
-        setError('YubiKey verification was canceled.')
+        setError('Master key verification was canceled.')
         return
       }
 
       const verification = await verifyAssertionResponse(
-        record.credential,
+        masterKey,
         assertion,
         assertionOptions.challenge as Uint8Array,
       )
 
       if (!verification.verified) {
-        setError('YubiKey verification failed.')
+        setError('Master key verification failed.')
         return
       }
 
-      saveAuthRecord({
-        ...record,
-        credential: {
-          ...record.credential,
-          signCount: verification.signCount,
-        },
+      const nextState = {
+        ...authState,
         trustedDevice: true,
         updatedAt: new Date().toISOString(),
-      })
+      }
 
+      saveAuthState(nextState)
+      setAuthState(nextState)
       setIsUnlocked(true)
-      setStoredCredentialId(record.credential.credentialId)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'YubiKey verification failed.')
+      setError(cause instanceof Error ? cause.message : 'Master key verification failed.')
     } finally {
       setIsSubmitting(false)
     }
@@ -166,8 +169,8 @@ function StartupGate({ children }: StartupGateProps) {
           <h1>WDWebOS Startup</h1>
           <p>
             {isOnboarding
-              ? 'Set up your profile and enroll the 5C NFC YubiKey for this device.'
-              : 'Use your enrolled YubiKey to continue.'}
+              ? 'Enroll the configured master 5C NFC security key to authorize devices and student accounts.'
+              : 'Use the configured master security key to continue.'}
           </p>
         </header>
 
@@ -212,31 +215,33 @@ function StartupGate({ children }: StartupGateProps) {
               ))}
             </select>
 
-            <p className="wd-gate-note">This device stays trusted after the YubiKey is enrolled.</p>
+            <p className="wd-gate-note">
+              Only the configured master key can authorize WDWebOS. Set it in your local env file
+              with the public credential ID and public key JWK.
+            </p>
 
             {error && <p className="wd-gate-error">{error}</p>}
 
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Waiting for YubiKey...' : 'Enroll YubiKey'}
+              {isSubmitting ? 'Waiting for master key...' : 'Enroll master key'}
             </button>
           </form>
         ) : (
           <form className="wd-gate-form" onSubmit={handleUnlockSubmit}>
             <p className="wd-gate-profile">
-              Welcome back, <strong>{storedProfile?.name}</strong> (Grade {storedProfile?.grade},
-              {' '}
-              {storedProfile?.lunchPeriod})
+              Master key enrolled for <strong>{activeAccount?.profile.name}</strong> (Grade{' '}
+              {activeAccount?.profile.grade}, {activeAccount?.profile.lunchPeriod})
             </p>
 
             <p className="wd-gate-note">
-              YubiKey is already enrolled on this browser. Unlocking will confirm the key and
-              keep this device trusted.
+              Unlocking requires your master key and authorizes this browser for the current
+              session.
             </p>
 
             {error && <p className="wd-gate-error">{error}</p>}
 
             <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Checking YubiKey...' : 'Unlock WDWebOS'}
+              {isSubmitting ? 'Checking master key...' : 'Unlock WDWebOS'}
             </button>
           </form>
         )}

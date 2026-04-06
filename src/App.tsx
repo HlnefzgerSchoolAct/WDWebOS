@@ -15,7 +15,7 @@ import DuckLife4Window from './components/DuckLife4Window'
 import DuckLife5Window from './components/DuckLife5Window'
 import BTD4Window from './components/BTD4Window'
 import RetroBowlWindow from './components/RetroBowlWindow'
-import { getStoredAuthRecord } from './lib/localAuth'
+import { getActiveStudentProfile, getStoredAuthState } from './lib/localAuth'
 
 type WindowState = {
   id: string
@@ -321,7 +321,7 @@ function App() {
   const [isLauncherOpen, setIsLauncherOpen] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
   const [theme, setTheme] = useState<'heritage' | 'night'>('heritage')
-  const profile = useMemo(() => getStoredAuthRecord()?.profile ?? null, [])
+  const profile = useMemo(() => getActiveStudentProfile(getStoredAuthState()), [])
 
   const runningWindows = useMemo(
     () => windows.filter((windowItem) => windowItem.isOpen),
