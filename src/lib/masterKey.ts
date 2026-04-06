@@ -1,8 +1,21 @@
 import type { WebAuthnCredentialRecord } from './localAuth'
 
+function normalizeEnvValue(value: string): string {
+  const trimmed = value.trim()
+
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+
+  return trimmed
+}
+
 function parseJsonWebKey(rawValue: string): JsonWebKey | null {
   try {
-    const parsed = JSON.parse(rawValue) as JsonWebKey
+    const parsed = JSON.parse(normalizeEnvValue(rawValue)) as JsonWebKey
 
     if (typeof parsed !== 'object' || parsed === null || typeof parsed.kty !== 'string') {
       return null
@@ -14,11 +27,19 @@ function parseJsonWebKey(rawValue: string): JsonWebKey | null {
   }
 }
 
-export function getConfiguredMasterKey(): WebAuthnCredentialRecord | null {
-  const credentialId = import.meta.env.VITE_MASTER_KEY_CREDENTIAL_ID as string | undefined
+export type ConfiguredMasterKey = WebAuthnCredentialRecord & {
+  rpId?: string
+}
+
+export function getConfiguredMasterKey(): ConfiguredMasterKey | null {
+  const rawCredentialId = import.meta.env.VITE_MASTER_KEY_CREDENTIAL_ID as string | undefined
   const rawPublicKey = import.meta.env.VITE_MASTER_KEY_PUBLIC_KEY_JWK as string | undefined
   const rawAlgorithm = import.meta.env.VITE_MASTER_KEY_ALGORITHM as string | undefined
   const rawSignCount = import.meta.env.VITE_MASTER_KEY_SIGN_COUNT as string | undefined
+  const rawRpId = import.meta.env.VITE_MASTER_KEY_RP_ID as string | undefined
+
+  const credentialId = rawCredentialId ? normalizeEnvValue(rawCredentialId) : ''
+  const rpId = rawRpId ? normalizeEnvValue(rawRpId).toLowerCase() : undefined
 
   if (!credentialId || !rawPublicKey) {
     return null
@@ -42,5 +63,6 @@ export function getConfiguredMasterKey(): WebAuthnCredentialRecord | null {
     publicKeyJwk,
     algorithm,
     signCount,
+    rpId,
   }
 }

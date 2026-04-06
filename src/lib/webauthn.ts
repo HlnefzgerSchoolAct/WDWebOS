@@ -65,6 +65,24 @@ function asArrayBufferView(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return bytes as Uint8Array<ArrayBuffer>
 }
 
+function normalizeRpId(rpId: string): string {
+  return rpId.trim().toLowerCase().replace(/\.+$/, '')
+}
+
+function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
+}
+
 async function profileToUserId(profile: StudentProfile): Promise<Uint8Array<ArrayBuffer>> {
   const normalized = `${profile.name.trim().toLowerCase()}|${profile.grade}|${profile.lunchPeriod}`
   return sha256(textEncoder.encode(normalized))
@@ -363,12 +381,15 @@ export function isWebAuthnSupported(): boolean {
 
 export async function createRegistrationOptions(
   profile: StudentProfile,
+  rpId?: string,
 ): Promise<PublicKeyCredentialCreationOptions> {
+  const effectiveRpId = normalizeRpId(rpId ?? window.location.hostname)
+
   return {
     challenge: asArrayBufferView(randomBytes(32)),
     rp: {
       name: 'WDWebOS',
-      id: window.location.hostname,
+      id: effectiveRpId,
     },
     user: {
       id: await profileToUserId(profile),
@@ -411,9 +432,13 @@ export async function extractCredentialRecord(
 
 export async function createAssertionOptions(
   credentialId: string,
+  rpId?: string,
 ): Promise<PublicKeyCredentialRequestOptions> {
+  const effectiveRpId = normalizeRpId(rpId ?? window.location.hostname)
+
   return {
     challenge: asArrayBufferView(randomBytes(32)),
+    rpId: effectiveRpId,
     allowCredentials: [
       {
         id: asArrayBufferView(base64UrlToBytes(credentialId)),
@@ -429,6 +454,7 @@ export async function verifyAssertionResponse(
   credentialRecord: WebAuthnCredentialRecord,
   assertion: PublicKeyCredential,
   expectedChallenge: Uint8Array,
+  expectedRpId?: string,
 ): Promise<{ verified: boolean; signCount: number }> {
   if (!(assertion.response instanceof AuthenticatorAssertionResponse)) {
     throw new Error('Expected a WebAuthn assertion response.')
@@ -454,6 +480,15 @@ export async function verifyAssertionResponse(
   }
 
   const authenticatorData = asArrayBufferView(new Uint8Array(assertion.response.authenticatorData))
+
+  const effectiveRpId = normalizeRpId(expectedRpId ?? window.location.hostname)
+  const rpIdHash = authenticatorData.slice(0, 32)
+  const expectedRpIdHash = await sha256(textEncoder.encode(effectiveRpId))
+
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) {
+    throw new Error('Security key is registered to a different website (RP ID mismatch).')
+  }
+
   const clientDataHash = await sha256(clientDataBytes)
   const signedData = concatBytes(authenticatorData, clientDataHash)
   const signature = asArrayBufferView(new Uint8Array(assertion.response.signature))

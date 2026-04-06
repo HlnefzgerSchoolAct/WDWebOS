@@ -64,6 +64,7 @@ Put the approved key credential in a local `.env.local` file at the repository r
 ```bash
 VITE_MASTER_KEY_CREDENTIAL_ID=your-credential-id
 VITE_MASTER_KEY_PUBLIC_KEY_JWK={"kty":"EC","crv":"P-256","x":"...","y":"...","ext":true}
+VITE_MASTER_KEY_RP_ID=your-domain.com
 VITE_MASTER_KEY_ALGORITHM=-7
 VITE_MASTER_KEY_SIGN_COUNT=0
 ```

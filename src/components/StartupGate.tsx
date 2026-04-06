@@ -26,11 +26,34 @@ type EnvVarRow = {
   value: string
 }
 
+function formatWebAuthnError(cause: unknown, rpId: string): string {
+  if (cause instanceof DOMException && cause.name === 'NotAllowedError') {
+    return 'Security key check timed out or was canceled.'
+  }
+
+  if (cause instanceof Error) {
+    const message = cause.message.toLowerCase()
+
+    if (
+      message.includes('not registered') ||
+      message.includes('credential') ||
+      message.includes('rp id mismatch')
+    ) {
+      return `This key is not registered for RP ID \"${rpId}\". If you enrolled on a different domain, set VITE_MASTER_KEY_RP_ID to that domain (or re-enroll on the current domain).`
+    }
+
+    return cause.message
+  }
+
+  return 'Master key verification failed.'
+}
+
 function StartupGate({ children }: StartupGateProps) {
   const initialState = useMemo(() => getStoredAuthState(), [])
   const [authState, setAuthState] = useState(initialState)
   const [isUnlocked, setIsUnlocked] = useState<boolean>(Boolean(initialState?.trustedDevice))
   const masterKey = useMemo(() => getConfiguredMasterKey(), [])
+  const effectiveRpId = masterKey?.rpId ?? window.location.hostname
 
   const [name, setName] = useState<string>('')
   const [grade, setGrade] = useState<StudentProfile['grade']>('9')
@@ -44,6 +67,7 @@ function StartupGate({ children }: StartupGateProps) {
   const envTemplate = [
     'VITE_MASTER_KEY_CREDENTIAL_ID=',
     'VITE_MASTER_KEY_PUBLIC_KEY_JWK=',
+    `VITE_MASTER_KEY_RP_ID=${window.location.hostname}`,
     'VITE_MASTER_KEY_ALGORITHM=-7',
     'VITE_MASTER_KEY_SIGN_COUNT=0',
   ].join('\n')
@@ -75,7 +99,7 @@ function StartupGate({ children }: StartupGateProps) {
       }
 
       if (!masterKey) {
-        const registrationOptions = await createRegistrationOptions(profile)
+        const registrationOptions = await createRegistrationOptions(profile, window.location.hostname)
         const credential = (await navigator.credentials.create({
           publicKey: registrationOptions,
         })) as PublicKeyCredential | null
@@ -92,6 +116,7 @@ function StartupGate({ children }: StartupGateProps) {
             key: 'VITE_MASTER_KEY_PUBLIC_KEY_JWK',
             value: JSON.stringify(generatedMasterKey.publicKeyJwk),
           },
+          { key: 'VITE_MASTER_KEY_RP_ID', value: window.location.hostname },
           { key: 'VITE_MASTER_KEY_ALGORITHM', value: String(generatedMasterKey.algorithm) },
           { key: 'VITE_MASTER_KEY_SIGN_COUNT', value: String(generatedMasterKey.signCount) },
         ]
@@ -103,7 +128,7 @@ function StartupGate({ children }: StartupGateProps) {
         return
       }
 
-      const assertionOptions = await createAssertionOptions(masterKey.credentialId)
+      const assertionOptions = await createAssertionOptions(masterKey.credentialId, masterKey.rpId)
       const assertion = (await navigator.credentials.get({
         publicKey: assertionOptions,
       })) as PublicKeyCredential | null
@@ -121,6 +146,7 @@ function StartupGate({ children }: StartupGateProps) {
         masterKey,
         assertion,
         assertionOptions.challenge as Uint8Array,
+        masterKey.rpId,
       )
 
       if (!verification.verified) {
@@ -133,7 +159,7 @@ function StartupGate({ children }: StartupGateProps) {
       setIsUnlocked(true)
       setError('')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Master key enrollment failed.')
+      setError(formatWebAuthnError(cause, effectiveRpId))
     } finally {
       setIsSubmitting(false)
     }
@@ -184,7 +210,7 @@ function StartupGate({ children }: StartupGateProps) {
     setIsSubmitting(true)
 
     try {
-      const assertionOptions = await createAssertionOptions(masterKey.credentialId)
+      const assertionOptions = await createAssertionOptions(masterKey.credentialId, masterKey.rpId)
       const assertion = (await navigator.credentials.get({
         publicKey: assertionOptions,
       })) as PublicKeyCredential | null
@@ -198,6 +224,7 @@ function StartupGate({ children }: StartupGateProps) {
         masterKey,
         assertion,
         assertionOptions.challenge as Uint8Array,
+        masterKey.rpId,
       )
 
       if (!verification.verified) {
@@ -215,7 +242,7 @@ function StartupGate({ children }: StartupGateProps) {
       setAuthState(nextState)
       setIsUnlocked(true)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Master key verification failed.')
+      setError(formatWebAuthnError(cause, effectiveRpId))
     } finally {
       setIsSubmitting(false)
     }
