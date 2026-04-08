@@ -15,7 +15,6 @@ import DuckLife4Window from './components/DuckLife4Window'
 import DuckLife5Window from './components/DuckLife5Window'
 import BTD4Window from './components/BTD4Window'
 import RetroBowlWindow from './components/RetroBowlWindow'
-import { getActiveStudentProfile, getStoredAuthState } from './lib/localAuth'
 
 type WindowState = {
   id: string
@@ -321,7 +320,6 @@ function App() {
   const [isLauncherOpen, setIsLauncherOpen] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false)
   const [theme, setTheme] = useState<'heritage' | 'night'>('heritage')
-  const profile = useMemo(() => getActiveStudentProfile(getStoredAuthState()), [])
 
   const runningWindows = useMemo(
     () => windows.filter((windowItem) => windowItem.isOpen),
@@ -692,7 +690,7 @@ function App() {
                   </section>
                 )}
 
-                {windowItem.id === 'clock' && <ClockWindow lunchPeriod={profile?.lunchPeriod} />}
+                {windowItem.id === 'clock' && <ClockWindow />}
 
                 {windowItem.id === 'minecraft' && <MinecraftWindow />}
                 {windowItem.id === 'ducklife1' && <DuckLife1Window />}

@@ -96,9 +96,8 @@ function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
   return true
 }
 
-async function profileToUserId(profile: StudentProfile): Promise<Uint8Array<ArrayBuffer>> {
-  const normalized = `${profile.name.trim().toLowerCase()}|${profile.grade}|${profile.lunchPeriod}`
-  return sha256(textEncoder.encode(normalized))
+async function masterKeyUserId(): Promise<Uint8Array<ArrayBuffer>> {
+  return sha256(textEncoder.encode('wdwebos-master-key'))
 }
 
 class CborReader {
@@ -393,7 +392,6 @@ export function isWebAuthnSupported(): boolean {
 }
 
 export async function createRegistrationOptions(
-  profile: StudentProfile,
   rpId?: string,
 ): Promise<PublicKeyCredentialCreationOptions> {
   const effectiveRpId = normalizeRpId(rpId ?? window.location.hostname)
@@ -405,9 +403,9 @@ export async function createRegistrationOptions(
       id: effectiveRpId,
     },
     user: {
-      id: await profileToUserId(profile),
-      name: profile.name,
-      displayName: `${profile.name} - Grade ${profile.grade}`,
+      id: await masterKeyUserId(),
+      name: 'WDWebOS Master Key',
+      displayName: 'WDWebOS Master Key',
     },
     pubKeyCredParams: [
       { type: 'public-key', alg: -7 },
@@ -416,7 +414,6 @@ export async function createRegistrationOptions(
     timeout: 60_000,
     attestation: 'none',
     authenticatorSelection: {
-      authenticatorAttachment: 'cross-platform',
       residentKey: 'discouraged',
       requireResidentKey: false,
       userVerification: 'required',

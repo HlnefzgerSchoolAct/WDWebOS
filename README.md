@@ -15,7 +15,7 @@ Base implementation has started with the foundation shell and system layout:
 - Settings panel with theme switching
 - Responsive desktop-first layout
 - Clock app with school schedule, live time, and countdown display
-- Master security key auth flow started for device and account authorization
+- Master security key auth flow started for device unlock
 
 ## Scope
 
@@ -28,7 +28,7 @@ In scope:
 - Launcher and taskbar
 - Settings core and theming
 - Auth/session-ready architecture
-- Master security key authority for device and student account enrollment
+- Master security key authority for device unlock
 - Accessibility and legal baseline
 - Clock and schedule-driven school day logic
 
@@ -52,14 +52,15 @@ npm run build
 
 ## Authentication Model
 
-WDWebOS uses one master 5C NFC security key as the enrollment authority for all devices and
-student accounts. That key is required to authorize first-time setup, add or restore accounts,
-and reapprove a device session.
+WDWebOS uses one master 5C NFC security key as the only startup authenticator. If the key is
+not configured, the app stays on the setup screen until the master credential values are
+generated and saved.
 
-WebAuthn requires `localhost` or HTTPS in a modern browser. Clearing site data removes the local
-session cache, but the master key remains the source of truth for enrollment.
+WebAuthn requires `localhost` or HTTPS in a modern browser. Clearing site data removes any
+leftover local auth state, but the master key remains the only source of access.
 
-Put the approved key credential in a local `.env.local` file at the repository root:
+Generate the approved key credential in the startup gate, then save the output in a local
+`.env.local` file or in Vercel environment variables:
 
 ```bash
 VITE_MASTER_KEY_CREDENTIAL_ID=your-credential-id
@@ -71,6 +72,9 @@ VITE_MASTER_KEY_SIGN_COUNT=0
 
 Only that credential ID and public key will be accepted. If a different security key is inserted,
 WDWebOS will reject it.
+
+The app clears old browser auth state on startup so any previous local login data cannot unlock
+the desktop.
 
 
 ## Next Foundation Milestones
